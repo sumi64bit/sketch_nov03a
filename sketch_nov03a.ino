@@ -9,8 +9,6 @@ Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 #include <cmath>
 #include <string>
 
-//#define U8G2_FONT_SUPPORT
-//#define U8G2_USE_LARGE_FONTS
 #include <din1451alt_G25pt7b.h>
 #include <din1451alt_G15pt7b.h>
 #include <vector>
