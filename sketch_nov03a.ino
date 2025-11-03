@@ -259,7 +259,7 @@ void setup()
   xbutton bt3 = xbutton(79*2+2, 232, "More");
   xbutton bt4 = xbutton(79*3+2, 232, "About");
   xbutton bt5 = xbutton(79*4+2, 232, "Options");
-  toggleButton tb = toggleButton(false, 79*5+2, 203, 3, 80, 70, Color(0, 255, 0), Color(255, 0, 0));
+  toggleButton tb = toggleButton(false, 79*5+2, 232, 3, 80, 40, Color(0, 255, 0), Color(255, 0, 0));
 
   buttons.push_back(bt1);
   buttons.push_back(bt2);
