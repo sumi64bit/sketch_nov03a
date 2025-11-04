@@ -21,6 +21,9 @@ class TouchEvent{
           HOLD,
           SWIPE
         } type;
+        Vector2 touchPos(){
+            return Vector2{TS->points[0].x, TS->points[0].y};
+        }
         void process(){
             if(TS->isTouched){
                 if(!type == PRESS){
