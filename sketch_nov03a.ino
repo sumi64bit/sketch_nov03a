@@ -8,6 +8,7 @@ Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 #include <TAMC_GT911.h>
 #include <cmath>
 #include <string>
+#include "xinterface.h"
 
 #include <din1451alt_G25pt7b.h>
 #include <din1451alt_G15pt7b.h>
@@ -49,27 +50,7 @@ uint16_t bg = gfx->color565(30, 20, 5);
   uint16_t colSetBox = gfx->color565(52,52,0);
   uint16_t colText   = gfx->color565(255,255,255);
 
-struct Color{
-  unsigned char r;
-  unsigned char g;
-  unsigned char b;
-  Color(unsigned char _r = 255, unsigned char _g = 255, unsigned char _b = 255){
-    r = _r;
-    g = _g;
-    b = _b;
-  }
-  uint16_t hex(){
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-  }
-};
 
-Color lerpColor(Color col_1, Color col_2){
-  Color temp_col = col_1;
-  temp_col.r = std::lerp(temp_col.r, col_2.r, 0.5);
-  temp_col.g = std::lerp(temp_col.g, col_2.g, 0.5);
-  temp_col.b = std::lerp(temp_col.b, col_2.b, 0.5);
-  return temp_col;
-}
 
 struct Label{
   String txt;
@@ -185,6 +166,7 @@ std::vector<xbutton> buttons;
 std::vector<toggleButton> toggleButtons;
 
 
+
 void drawLock(int x1 = 50, int y1 = 50, uint16_t color2 = BLACK) {
   // lock body (10x8 rectangle)
   gfx->fillRect(x1 + 1, y1 + 4, 10, 8, color2);
@@ -220,6 +202,7 @@ void drawPowerButton(int x, int y, uint16_t color) {
 }
 
 
+std::vector<std::unique_ptr<xelement>> xElements;
 
 void setup() 
 {
@@ -252,26 +235,24 @@ void setup()
  
    gfx->fillRect(0, 240, 480, 32, button);
   int x = 5;
-  xbutton bt1 = xbutton(79*0+2, 232, "Home");
-  xbutton bt2 = xbutton(79*1+2, 232, "Settings");
-  xbutton bt3 = xbutton(79*2+2, 232, "More");
-  xbutton bt4 = xbutton(79*3+2, 232, "About");
-  xbutton bt5 = xbutton(79*4+2, 232, "Options");
-  toggleButton tb = toggleButton(false, 79*5+2, 232, 3, 80, 40, Color(0, 255, 0), Color(255, 0, 0));
+  xdualToggleButton dtb = xdualToggleButton(false, 79*0+2, 232, 1, 152, 40);
+  xbutton bt1 = xbutton(79*2+2, 232, "Home");
+  xbutton bt2 = xbutton(79*3+2, 232, "Settings");
+  xbutton bt3 = xbutton(79*4+2, 232, "More");
+  xbutton bt4 = xbutton(79*5+2, 232, "About");
 
   buttons.push_back(bt1);
   buttons.push_back(bt2);
   buttons.push_back(bt3);
   buttons.push_back(bt4);
-  buttons.push_back(bt5);
-  toggleButtons.push_back(tb);
+  xElements.push_back(std::make_unique<xdualToggleButton>(dtb));
 
 
  
   }
 void loop() 
 { 
-
+  GFX = gfx;
   
  
   int16_t cvc = ads.readADC_SingleEnded(0);
@@ -397,6 +378,9 @@ void loop()
         }
     }
  }
+  for (auto& _e : xElements) {
+    _e->Process(ts);
+  }
  
    gfx->flush();
   ledcWrite(GFX_BL, 255);
