@@ -43,14 +43,14 @@ Arduino_GFX *gfx = new Arduino_Canvas(480 /* width */, 272 /* height */, g);
 TAMC_GT911 ts(SDA_PIN1, SCL_PIN1, INT_PIN, RST_PIN, TOUCH_WIDTH, TOUCH_HEIGHT);
 
 uint16_t bg = gfx->color565(30, 20, 5);
-  uint16_t topbar = gfx->color565(255, 210, 0);
-  uint16_t text = gfx->color565(255, 255, 255);
-  uint16_t button = gfx->color565(60, 60, 60);
-  uint16_t accent = gfx->color565(255, 255, 0);
-  uint16_t colSetBox = gfx->color565(52,52,0);
-  uint16_t colText   = gfx->color565(255,255,255);
+uint16_t topbar = gfx->color565(255, 210, 0);
+uint16_t text = gfx->color565(255, 255, 255);
+uint16_t button = gfx->color565(60, 60, 60);
+uint16_t accent = gfx->color565(255, 255, 0);
+uint16_t colSetBox = gfx->color565(52,52,0);
+uint16_t colText   = gfx->color565(255,255,255);
 
-
+TouchEvent TEvent;
 
 struct Label{
   String txt;
@@ -77,7 +77,7 @@ struct Label{
 Color c_button = Color(50, 50, 50);
 Color c_button_pressed = Color(128, 128, 128);
 
-struct xbutton{
+struct xbutton : xelement{
   int x;
   int y;
   char* txt;
@@ -211,6 +211,7 @@ void setup()
   Wire.begin(SDA_PIN1, SCL_PIN1);
   ts.begin();
   ts.setRotation(90);
+  TS = &ts;
   gfx->begin();
 
    Serial.begin(9600);
@@ -250,6 +251,7 @@ void setup()
 
  
   }
+
 void loop() 
 { 
   GFX = gfx;
@@ -352,6 +354,8 @@ void loop()
    
 
   ts.read();
+  TEvent.process();
+  Serial.println(TEvent.type);
   for(xbutton& b: buttons){
     b.process();
     if (ts.isTouched){
@@ -379,7 +383,7 @@ void loop()
     }
  }
   for (auto& _e : xElements) {
-    _e->Process(ts);
+    _e->Process();
   }
  
    gfx->flush();

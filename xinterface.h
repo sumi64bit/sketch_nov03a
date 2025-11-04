@@ -4,12 +4,52 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "xmath.h"
 
 Arduino_GFX *GFX = nullptr;
+TAMC_GT911 *TS = nullptr;
+
+class TouchEvent{
+    int hold_threshold = 500; //milliseconds
+    int last_touch_time = 0;
+    Vector2 last_touch_coordinates = {0, 0};
+    public:
+        enum Type{
+          NONE,
+          PRESS,
+          RELEASE,
+          HOLD,
+          SWIPE
+        } type;
+        void process(){
+            if(TS->isTouched){
+                if(!type == PRESS){
+                    type = PRESS;
+                    last_touch_time = millis();
+                    last_touch_coordinates = Vector2{TS->points[0].x, TS->points[0].y};
+                }else{
+                    Vector2 touch_coordinates = Vector2{TS->points[0].x, TS->points[0].y};
+                    if(touch_coordinates.x != last_touch_coordinates.x || touch_coordinates.y != last_touch_coordinates.y){
+                        type = SWIPE;
+                    }else if (type != SWIPE){
+                        if(millis() - last_touch_time > hold_threshold){
+                            type = HOLD;
+                        }
+                    } 
+                }
+            }else{
+                if(type == PRESS || type == HOLD){
+                    type = RELEASE;
+                }else{
+                    type = NONE;
+                }
+            }
+        }
+};
 
 struct xelement{
   virtual void Draw() = 0;
-  virtual void Process(TAMC_GT911& ts) = 0;
+  virtual void Process() = 0;
   virtual ~xelement() {}
 };
 
@@ -56,13 +96,13 @@ struct xdualToggleButton : public xelement{
         noraml_color = _normal_col;
         pressed_color = _pressed_col;
     }
-    void Process(TAMC_GT911& ts){
+    void Process(){
         Draw();
         
-        if(ts.isTouched){
-            int ar_size = sizeof(ts.touches);
-            int touch_x = ts.points[ar_size-1].x;
-            int touch_y = ts.points[ar_size-1].y;
+        if(TS->isTouched){
+            int ar_size = sizeof(TS->touches);
+            int touch_x = TS->points[ar_size-1].x;
+            int touch_y = TS->points[ar_size-1].y;
             if(touch_x>=x && touch_y>=y && touch_x <= x+width && touch_y <= y+height){
                 if(touch_x <= x + width/2){
                     toggled = true;
