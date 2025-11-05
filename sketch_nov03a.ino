@@ -3,18 +3,9 @@
 Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 //Adafruit_ADS1015 ads;     /* Use this for the 12-bit version */
 
-#include <Arduino_GFX_Library.h>
 #include <Wire.h>
-#include <TAMC_GT911.h>
-#include <cmath>
-#include <string>
 #include "xinterface.h"
 
-#include <din1451alt_G25pt7b.h>
-#include <din1451alt_G15pt7b.h>
-#include <vector>
-#include <FreeSansBold4pt7b.h>
-#include <din1451alt_G10pt7b.h>
 //#include "SPIFFS.h"
 
 #define GFX_BL 1 //  backlight pin
@@ -50,28 +41,7 @@ uint16_t accent = gfx->color565(255, 255, 0);
 uint16_t colSetBox = gfx->color565(52,52,0);
 uint16_t colText   = gfx->color565(255,255,255);
 
-TouchEvent TEvent;
 
-struct Label{
-  String txt;
-  int x;
-  int y;
-  Color col = Color(169, 169, 169);
-  int font_size;
-
-  Label(int _x, int _y, String _txt, int _size, Color _col = Color(255, 255, 255)){
-    x = _x;
-    y = _y;
-    txt = _txt;
-    font_size = _size;
-    col = _col;
-  }
-  void draw(){
-    gfx->setCursor(x, y);
-    gfx->setTextSize(font_size);
-    gfx->println(txt);
-  }
-};
 
 //THEME COLORS
 Color c_button = Color(50, 50, 50);
@@ -110,7 +80,7 @@ struct xbutton{
     gfx->setTextColor(WHITE);      
     gfx->println(txt);  
     if(is_pressed){
-      hl_color = lerpColor(hl_color, c_button);
+      hl_color = lerpColor(hl_color, c_button, 0.5);
     }
   }
 };
@@ -233,6 +203,7 @@ fpsCounter FPSCounter;
 
 void setup() 
 {
+  GFX = gfx;
   Serial.begin(115200);
   Wire1.begin(SDA_PIN, SCL_PIN);
   Wire.begin(SDA_PIN1, SCL_PIN1);
@@ -249,12 +220,17 @@ void setup()
     while (1);
   }
 
+  xPages["main"] = std::make_shared<xPage>();
+
+  Label titleLabel = Label(220, 130, "Main page", 1, Color(255, 255, 255));
+  xPages["main"]->elements.push_back(std::make_shared<Label>(titleLabel));
+
   //set backlight control pin
   pinMode(GFX_BL, OUTPUT);
   ledcAttach(GFX_BL, freq, resolution);
 
 
-    gfx->fillRect(0, 240, 480, 32, button);
+  gfx->fillRect(0, 240, 480, 32, button);
   int x = 5;
   xdualToggleButton dtb = xdualToggleButton(false, 79*0+2, 232, 1, 152, 40);
   xbutton bt1 = xbutton(79*2+2, 232, "Home");
@@ -271,20 +247,21 @@ void setup()
 
 void loop() 
 { 
-  GFX = gfx;
-  
+  //rgba(82, 81, 93, 1);
+  gfx->fillScreen(Color(82, 81, 93).hex()); 
   int16_t cvc = ads.readADC_SingleEnded(0);
   float volts = ads.computeVolts(cvc);
   int value5 =map(cvc, 0, 32767, 0 ,30);
 
-   int16_t cvc1 = ads.readADC_SingleEnded(1);
+  int16_t cvc1 = ads.readADC_SingleEnded(1);
   float volts1 = ads.computeVolts(cvc1) * 10;
   int value51 =map(cvc1, 0, 32767, 0 ,30);
   
-  gfx->fillScreen(bg);
+
+  //gfx->fillScreen(bg);
   ts.read();
   TEvent.process();
-  Serial.println(TEvent.type);
+  /*
   for(xbutton& b: buttons){
     b.process();
     if (ts.isTouched){
@@ -311,13 +288,14 @@ void loop()
         }
     }
  }
+ */
   for (auto& _e : xElements) {
     _e->Process();
   }
+  
+  xPages["main"]->Process();
   FPSCounter.update();
   FPSCounter.draw(10, 10);
-   gfx->flush();
+  gfx->flush();
   ledcWrite(GFX_BL, 255);
-     drawLock(100, 100, gfx->color565(255, 255, 0));
-  gfx->fillScreen(BLACK); 
 }
