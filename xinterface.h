@@ -78,6 +78,53 @@ Color lerpColor(Color col_1, Color col_2){
   return temp_col;
 }
 
+struct xPowerButton : public xelement{
+    bool is_pressed = false;
+    int x, y;
+    int b_width, b_height;
+    int padding;
+    Color c_button = Color(255, 0, 0);
+    Color hl_color = Color(200, 0, 0);
+    
+    //Animation variables
+    int hl_xsize = 0;
+    int rest_time_passed = 0;
+    int rest_time = 1000; //milliseconds
+
+    xPowerButton(int _x = 0, int _y = 0, int _padding = 0,
+                 int _b_width = 80, int _b_height = 40){
+        padding = _padding;
+        x = _x;
+        y = _y;
+        b_width = _b_width;
+        b_height = _b_height;
+    }
+    void Process(){
+        Draw();
+        process_animation();
+    }
+    void Draw(){
+        GFX->fillRoundRect(x+padding, y+padding, b_width-(padding*2), b_height-(padding*2), 3, (is_pressed ? hl_color : c_button).hex());
+        GFX->fillRoundRect(x+padding, y+padding, hl_xsize-(padding*2), b_height-(padding*2), 3, Color(255, 220, 0).hex());
+    }
+    void pressed(){
+        is_pressed = true;
+    }
+
+    void process_animation(){
+        if (rest_time_passed >= rest_time){
+            if (hl_xsize < b_width){
+                hl_xsize = std::lerp(hl_xsize, b_width, 0.5);
+            }else{
+                rest_time_passed = 0;
+                hl_xsize = 0;
+            }
+        }else{
+            rest_time_passed += millis();
+        }
+    }
+};
+
 struct xdualToggleButton : public xelement{
     bool toggled = false;
     int x, y;

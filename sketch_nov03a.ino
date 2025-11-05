@@ -204,34 +204,33 @@ void drawPowerButton(int x, int y, uint16_t color) {
 
 std::vector<std::unique_ptr<xelement>> xElements;
 
-struct testBox{
-  int x=10, y=10;
-  bool dragging = false;
-  testBox(){}
-  void draw(){
-    Color active_color;
-    if(TEvent.type == TouchEvent::PRESS){
-      active_color = Color(0, 255, 0);
-    }else if(TEvent.type == TouchEvent::HOLD){
-      active_color = Color(255, 0, 0);
-      x = TEvent.touchPos().x - 50;
-      y = TEvent.touchPos().y - 50;
-      dragging = true;
-    }else if(TEvent.type == TouchEvent::SWIPE){
-      active_color = Color(0, 0, 255);
-      if(dragging){
-        x = TEvent.touchPos().x - 50;
-        y = TEvent.touchPos().y - 50;
-      }
-    }else{
-      active_color = Color(100, 100, 100);
-      dragging = false;
-    }
-    gfx->fillRect(x, y, 100, 100, active_color.hex());
-  }
-};
+struct fpsCounter{
+  unsigned long lastTime = 0;
+  int frameCount = 0;
+  float fps = 0.0;
 
-testBox tbox;
+  void update(){
+    frameCount++;
+    unsigned long currentTime = millis();
+    if(currentTime - lastTime >= 1000){
+      fps = frameCount / ((currentTime - lastTime) / 1000.0);
+      frameCount = 0;
+      lastTime = currentTime;
+    }
+  }
+
+  void draw(int x, int y){
+    gfx->fillRoundRect(x, y, 80, 24, 5, BLACK);
+    gfx->setCursor(x+12, y+8);
+    gfx->setTextSize(1);
+    gfx->setTextColor(WHITE);
+    gfx->print("FPS: ");
+    gfx->println(fps);
+  }
+} fps;
+
+fpsCounter FPSCounter;
+
 void setup() 
 {
   Serial.begin(115200);
@@ -261,20 +260,19 @@ void setup()
   xbutton bt1 = xbutton(79*2+2, 232, "Home");
   xbutton bt2 = xbutton(79*3+2, 232, "Settings");
   xbutton bt3 = xbutton(79*4+2, 232, "More");
-  xbutton bt4 = xbutton(79*5+2, 232, "About");
+  xPowerButton pb = xPowerButton(79*5+2, 232);
 
   buttons.push_back(bt1);
   buttons.push_back(bt2);
   buttons.push_back(bt3);
-  buttons.push_back(bt4);
   xElements.push_back(std::make_unique<xdualToggleButton>(dtb));
+  xElements.push_back(std::make_unique<xPowerButton>(pb));
 }
 
 void loop() 
 { 
   GFX = gfx;
   
- 
   int16_t cvc = ads.readADC_SingleEnded(0);
   float volts = ads.computeVolts(cvc);
   int value5 =map(cvc, 0, 32767, 0 ,30);
@@ -282,14 +280,10 @@ void loop()
    int16_t cvc1 = ads.readADC_SingleEnded(1);
   float volts1 = ads.computeVolts(cvc1) * 10;
   int value51 =map(cvc1, 0, 32767, 0 ,30);
-
   
   gfx->fillScreen(bg);
-  
-
   ts.read();
   TEvent.process();
-  tbox.draw();
   Serial.println(TEvent.type);
   for(xbutton& b: buttons){
     b.process();
@@ -320,7 +314,8 @@ void loop()
   for (auto& _e : xElements) {
     _e->Process();
   }
- 
+  FPSCounter.update();
+  FPSCounter.draw(10, 10);
    gfx->flush();
   ledcWrite(GFX_BL, 255);
      drawLock(100, 100, gfx->color565(255, 255, 0));
