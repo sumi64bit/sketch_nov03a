@@ -7,6 +7,7 @@
 #include "xmath.h"
 #include <unordered_map>
 
+#include "ebrima8pt7b.h"
 #include <din1451alt_G10pt7b.h>
 
 Arduino_GFX *GFX = nullptr;
@@ -113,18 +114,6 @@ Color lerpColor(Color col_1, Color col_2, float t = 0.5){
   return temp_col;
 }
 
-bool operator==(const Color& c1, const Color& c2){
-    return (c1.r == c2.r) && (c1.g == c2.g) && (c1.b == c2.b);
-}
-
-Color lerpColor(Color col_1, Color col_2, float t = 0.5){
-  Color temp_col = col_1;
-  temp_col.r = std::lerp(temp_col.r, col_2.r, t);
-  temp_col.g = std::lerp(temp_col.g, col_2.g, t);
-  temp_col.b = std::lerp(temp_col.b, col_2.b, t);
-  return temp_col;
-}
-
 struct Label : public xelement{
   String txt;
   int x;
@@ -143,7 +132,7 @@ struct Label : public xelement{
     Draw();
   }
   void Draw(){
-    GFX->setFont(&din1451alt_G10pt7b);
+    GFX->setFont(&ebrima8pt7b);
     GFX->setTextColor(col.hex()); 
     GFX->setCursor(x, y);
     GFX->setTextSize(font_size);
@@ -151,16 +140,58 @@ struct Label : public xelement{
   }
 };
 
+struct xButton : public xelement{
+    int x, y;
+    int width, height;
+    String txt;
+    Color button_color = Color(100, 100, 100);
+    Color button_pressed_color = Color(150, 150, 150);
+    int padding = 1;
+    bool is_pressed = false;
+
+    Label label = Label(0, 0, "Button", 1, Color(0, 0, 0));
+
+    xButton(int _x = 0, int _y = 0, String _txt = "Button",
+            int _b_width = 80, int _b_height = 40){
+        x = _x;
+        y = _y;
+        txt = _txt;
+        width = _b_width;
+        height = _b_height;
+        label.x = x + (width/2) - ((txt.length()*6)/2);
+        label.y = y + (height/2) + 4;
+        label.txt = txt;
+    }
+    void Process(){
+        Draw();
+    }
+    void Draw(){
+        GFX->fillRoundRect(x+padding, y, width-padding, height, 3, (is_pressed ? button_pressed_color : button_color).hex());
+        label.Draw();
+    }
+    bool checkPressed(){
+        TEvent.process();
+        if(TEvent.type == TouchEvent::PRESS && !is_pressed && TEvent.isPressed(x, y, width, height)){
+            Serial.println("Button pressed: " + txt);
+            is_pressed = true;
+            return true;
+        }
+        if(TEvent.type == TouchEvent::RELEASE){
+            is_pressed = false;
+        }
+        return false;
+    }
+};
+
 struct xPowerButton : public xelement{
     bool On = false;
     int x, y;
     int b_width, b_height;
     int padding;
-    Color button_color = Color(255, 102, 82);
-    Color pressed_color = Color(255, 255, 255);
-
-    Color on_color = Color(111, 255, 82);
-    Color off_color = Color(255, 102, 82);
+    Color button_color = Color(24, 24, 24);
+    Color pressed_color = Color(64, 64, 64);
+    Color on_color = Color(0, 0, 255);
+    Color off_color = Color(24, 24, 24);
 
     String label_txt = "On";
     Label label = Label(0, 0, label_txt, 1, Color(0, 0, 0));
@@ -183,6 +214,7 @@ struct xPowerButton : public xelement{
     void Draw(){
         GFX->fillRoundRect(x+padding, y+padding, b_width-(padding*2), b_height-(padding*2), 3, button_color.hex());
         label.txt = (On ? "On" : "Off");
+        label.col = (On ? Color(255, 255, 255) : Color(0, 0, 0));
         label.Draw();
     }
     void checkPressed(){
@@ -208,15 +240,23 @@ struct xPowerButton : public xelement{
 };
 
 struct voltageToggleButton : public xelement{
-    bool toggled = false;
+    //rgba(51, 51, 51, 1);
+    int toggled = 0;//0 = off, 1 = low voltage, 2 = high voltage
     int x, y;
     int width, height;
     int padding;
-    Color noraml_color = Color(112, 112, 112);
+    Color normal_color = Color(24, 24, 24);
     Color pressed_color = Color(255, 220, 40);
-    xToggleButton(bool is_toggled = false,
+
+    int toggled_rect_x = 0;
+
+    Label label_first = Label(0, 0, "Test", 1, Color(0, 0, 0));
+    Label label_second = Label(0, 0, "Test2", 1, Color(0, 0, 0));
+    Label label_third = Label(0, 0, "Test3", 1, Color(0, 0, 0));
+
+    voltageToggleButton(int is_toggled = 0,
                int _x = 0, int _y = 0, int _padding = 0,
-               int _width = 50, int _height = 50, 
+               int _width = 240, int _height = 50, 
                Color _normal_col = Color(112, 112, 112), 
                Color _pressed_col = Color(255, 220, 40)){
         padding = _padding;
@@ -225,34 +265,62 @@ struct voltageToggleButton : public xelement{
         width = _width;
         height = _height;
         toggled = is_toggled;
-        noraml_color = _normal_col;
+        normal_color = _normal_col;
         pressed_color = _pressed_col;
+        label_first.x = x + (width/6) - 18;
+        label_first.y = y + (height/2) + 4;
+        label_second.x = x + (width/2) - 18;
+        label_second.y = y + (height/2) + 4;
+        label_third.x = x + ((width/6)*5) - 18;
+        label_third.y = y + (height/2) + 4;
+
+        toggled_rect_x = x + padding;
     }
     void Process(){
         Draw();
-        
+        animatedToggle();
         if(TS->isTouched){
             int ar_size = sizeof(TS->touches);
             int touch_x = TS->points[ar_size-1].x;
             int touch_y = TS->points[ar_size-1].y;
             if(touch_x>=x && touch_y>=y && touch_x <= x+width && touch_y <= y+height){
-                if(touch_x <= x + width/2){
-                    toggled = true;
+                if(touch_x <= x + (width/3)){
+                    toggled = 0; //low voltage
+                }else if(touch_x <= x + (width/3)*2){
+                    toggled = 1; //high voltage
                 }else{
-                    toggled = false;
+                    toggled = 2; //off
                 }
             }
         }
     }
     void Draw(){
+        //Draw Background
+        GFX->fillRoundRect(x, y, width, height, 3, normal_color.hex());
         //Draw First toggle button
-        GFX->fillRoundRect(x+padding, y+padding, width/3-(padding*2), height-(padding*2), 3, (toggled ? pressed_color : noraml_color).hex()); 
+        GFX->fillRoundRect(x+padding, y+padding, width/3, height-(padding*2), 3, (toggled==0 ? normal_color : normal_color).hex()); 
         //Draw Second toggle button
-        GFX->fillRoundRect(x+padding+(width/3), y+padding, width/3+(padding*4), height-(padding*2), 3, (!toggled ? pressed_color : noraml_color).hex());
+        GFX->fillRoundRect(x+padding+(width/3), y+padding, width/3, height-(padding*2), 3, (toggled==1 ? normal_color : normal_color).hex());
         //Draw Third toggle button
-        GFX->fillRoundRect(x+padding+((width/3)*2), y+padding, width/3-(padding*2), height-(padding*2), 3, noraml_color.hex());
-        //Draw Borders
-        GFX->drawRoundRect(x-padding, y-padding, width+(padding*2), height+(padding*2), 3, BLACK);
+        GFX->fillRoundRect(x+padding+((width/3)*2), y+padding, width/3-2, height-(padding*2), 3, (toggled==2 ? normal_color : normal_color).hex());
+        //Draw Borders 
+        //GFX->drawRoundRect(x-padding, y-padding, width+(padding*2), height+(padding*2), 3, BLACK);
+        //Draw animated toggled rect
+        GFX->fillRoundRect(toggled_rect_x, y+padding, (width/3)-(padding*2), height-(padding*2), 3, pressed_color.hex());
+        label_first.Process();
+        label_second.Process();
+        label_third.Process();
+    }
+    void animatedToggle(){
+        int target_x;
+        if(toggled == 0){
+            target_x = x + padding;
+        }else if(toggled == 1){
+            target_x = x + padding + (width/3);
+        }else{
+            target_x = x + padding + ((width/3)*2);
+        }
+        toggled_rect_x = std::lerp(toggled_rect_x, target_x, 1);
     }
 };
 struct xPage{
@@ -267,6 +335,7 @@ struct xPage{
         elements.push_back(element);
     }
     void Process(){
+        if(!visible) return;
         for(auto& element : elements){
             element->Process();
         }

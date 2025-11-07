@@ -191,7 +191,7 @@ struct fpsCounter{
 
   void draw(int x, int y){
     gfx->fillRoundRect(x, y, 80, 24, 5, BLACK);
-    gfx->setCursor(x+12, y+8);
+    gfx->setCursor(x+2, y+12);
     gfx->setTextSize(1);
     gfx->setTextColor(WHITE);
     gfx->print("FPS: ");
@@ -200,6 +200,29 @@ struct fpsCounter{
 } fps;
 
 fpsCounter FPSCounter;
+
+class uiElements{
+  public:
+    voltageToggleButton dtb = voltageToggleButton(false, 0, 232, 1, 240, 40);
+    xButton settings_button = xButton(240, 232, "Settings");
+    xButton home_button = xButton(240, 232, "Home");
+    xButton ex_button = xButton(320, 232, "EX");
+    xPowerButton pb = xPowerButton(400, 232);
+
+    uiElements(){}
+    void init() {
+      xPages["main"]->elements.push_back(std::make_unique<xButton>(settings_button));
+      xPages["settings"]->elements.push_back(std::make_unique<xButton>(home_button));
+      xPages["settings"]->visible = false;
+
+      xElements.push_back(std::make_unique<voltageToggleButton>(dtb));
+      xElements.push_back(std::make_unique<xPowerButton>(pb));
+      //xElements.push_back(std::make_unique<xButton>(settings_button));
+      xElements.push_back(std::make_unique<xButton>(ex_button));
+    }
+};
+
+uiElements ui;
 
 void setup() 
 {
@@ -221,34 +244,28 @@ void setup()
   }
 
   xPages["main"] = std::make_shared<xPage>();
+  xPages["settings"] = std::make_shared<xPage>();
 
   Label titleLabel = Label(220, 130, "Main page", 1, Color(255, 255, 255));
   xPages["main"]->elements.push_back(std::make_shared<Label>(titleLabel));
 
+  Label settingsLabel = Label(200, 130, "Settings page", 1, Color(255, 255, 255));
+  xPages["settings"]->elements.push_back(std::make_shared<Label>(settingsLabel));
+
   //set backlight control pin
   pinMode(GFX_BL, OUTPUT);
   ledcAttach(GFX_BL, freq, resolution);
-
+  ui.init();
 
   gfx->fillRect(0, 240, 480, 32, button);
   int x = 5;
-  xdualToggleButton dtb = xdualToggleButton(false, 79*0+2, 232, 1, 152, 40);
-  xbutton bt1 = xbutton(79*2+2, 232, "Home");
-  xbutton bt2 = xbutton(79*3+2, 232, "Settings");
-  xbutton bt3 = xbutton(79*4+2, 232, "More");
-  xPowerButton pb = xPowerButton(79*5+2, 232);
-
-  buttons.push_back(bt1);
-  buttons.push_back(bt2);
-  buttons.push_back(bt3);
-  xElements.push_back(std::make_unique<xdualToggleButton>(dtb));
-  xElements.push_back(std::make_unique<xPowerButton>(pb));
+  
 }
 
 void loop() 
 { 
-  //rgba(82, 81, 93, 1);
-  gfx->fillScreen(Color(82, 81, 93).hex()); 
+  //rgba(29, 29, 29, 1);
+  gfx->fillScreen(Color(0, 0, 0).hex()); 
   int16_t cvc = ads.readADC_SingleEnded(0);
   float volts = ads.computeVolts(cvc);
   int value5 =map(cvc, 0, 32767, 0 ,30);
@@ -294,6 +311,15 @@ void loop()
   }
   
   xPages["main"]->Process();
+  xPages["settings"]->Process();
+  if(ui.settings_button.checkPressed()){
+    xPages["main"]->visible = false;
+    xPages["settings"]->visible = true;
+  }
+  if(ui.home_button.checkPressed()){
+    xPages["settings"]->visible = false;
+    xPages["main"]->visible = true;
+  }
   FPSCounter.update();
   FPSCounter.draw(10, 10);
   gfx->flush();
